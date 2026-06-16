@@ -197,3 +197,53 @@ INSERT INTO purchase_orders (id, nomor_po, nama_kegiatan, department_id, budget_
 INSERT INTO po_items (po_id, nama_barang, jumlah, harga_satuan, total_harga, rekening_supplier) VALUES
 (1, 'Google Ads Campaign', 1, 50000000.00, 50000000.00, 'BCA 1234567890'),
 (1, 'Facebook & Instagram Ads', 1, 35000000.00, 35000000.00, 'BCA 1234567890');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 8. TABLE: roles
+-- Menyimpan nama-nama role / modul akses.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9. TABLE: user_roles
+-- Pemetaan relasi user dengan role (banyak ke banyak).
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_roles (
+    user_id INT NOT NULL,
+    role_id INT NOT NULL,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed Roles
+INSERT INTO roles (id, nama) VALUES
+(1, 'Super'),
+(2, 'Smallgroup'),
+(3, 'Ministry'),
+(4, 'Class'),
+(5, 'Event'),
+(6, 'Campaign'),
+(7, 'User'),
+(8, 'Prayer Praise'),
+(9, 'Newsfeed'),
+(10, 'Nextgen'),
+(11, 'Devotion'),
+(12, 'Discover')
+ON DUPLICATE KEY UPDATE nama=VALUES(nama);
+
+-- Seed Demo Users from screenshot
+INSERT INTO users (nama, email, password, role, departemen_id, phone, join_date) VALUES
+('Adevita Nataliani Santoso', 'adevitanataliani@gmail.com', 'pass123', 'Requester', 1, '+62 812-1111-2222', '2026-06-16'),
+('Adi Nugroho Tjandrasaputra', 'arcguardian90@gmail.com', 'pass123', 'Requester', 1, '+62 812-2222-3333', '2026-06-16'),
+('Aditya Hindarta', 'adityahindarta@gmail.com', 'pass123', 'Requester', 1, '+62 812-3333-4444', '2026-06-16'),
+('Andre Saptomo', 'andre.saptomo@ifgfsemarang.org', 'pass123', 'Administrator', 2, '+62 812-4444-5555', '2026-06-16'),
+('Andrew William', 'andrewwil94@gmail.com', 'pass123', 'Requester', 1, '+62 812-5555-6666', '2026-06-16'),
+('Aurelia Ivana Melody Ronsumbre', 'aureliaivanaa07@gmail.com', 'pass123', 'Requester', 1, '+62 812-6666-7777', '2026-06-16'),
+('Clarissa Delina Proboyuwono', 'delinaclarissa@gmail.com', 'pass123', 'Approver', 4, '+62 812-7777-8888', '2026-06-16'),
+('Gabriella Christie Kartadibrata', 'cyrgaby20@gmail.com', 'pass123', 'Budget Manager', 1, '+62 812-8888-9999', '2026-06-16'),
+('Hanny Agustina', 'hanny.iun@ifgfsemarang.org', 'pass123', 'Requester', 1, '+62 812-9999-0000', '2026-06-16')
+ON DUPLICATE KEY UPDATE nama=VALUES(nama);

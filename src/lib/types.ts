@@ -115,3 +115,16 @@ export interface LoginForm {
   email: string;
   password: string;
 }
+
+// Role definition
+export interface Role {
+  id: number;
+  nama: string;
+}
+
+// User-Role Mapping
+export interface UserRoleMapping {
+  user_id: number;
+  role_id: number;
+}
+

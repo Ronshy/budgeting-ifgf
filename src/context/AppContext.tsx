@@ -5,9 +5,10 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from 'react';
-import type { PurchaseOrder, LPJFile, UserProfile, POFormState, NewItemState, UserAccount } from '@/lib/types';
+import type { PurchaseOrder, LPJFile, UserProfile, POFormState, NewItemState, UserAccount, Role, UserRoleMapping } from '@/lib/types';
 import { initialPOs, initialLPJFiles, initialUsers, departments } from '@/lib/data';
 import { formatRupiah } from '@/lib/utils';
 
@@ -63,15 +64,57 @@ interface AppContextValue {
   addUser: (user: Omit<UserAccount, 'id' | 'joinDate'>) => void;
   updateUser: (userId: number, updatedUser: Partial<UserAccount>) => void;
   deleteUser: (userId: number) => void;
+
+  // Role Setting
+  roles: Role[];
+  userRoles: UserRoleMapping[];
+  addRole: (nama: string) => Promise<boolean>;
+  toggleUserRole: (userId: number, roleId: number) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // User Management State
   const [users, setUsers] = useState<UserAccount[]>(initialUsers);
+
+  // Role Setting State
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRoleMapping[]>([]);
+
+  // Load users, roles, and user_roles from database
+  useEffect(() => {
+    // Fetch users
+    fetch(`${API_BASE_URL}/users`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch users');
+        return res.json();
+      })
+      .then((data) => setUsers(data))
+      .catch((err) => console.error('Error fetching users:', err));
+
+    // Fetch roles
+    fetch(`${API_BASE_URL}/roles`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch roles');
+        return res.json();
+      })
+      .then((data) => setRoles(data))
+      .catch((err) => console.error('Error fetching roles:', err));
+
+    // Fetch user-roles mappings
+    fetch(`${API_BASE_URL}/user-roles`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch user roles');
+        return res.json();
+      })
+      .then((data) => setUserRoles(data))
+      .catch((err) => console.error('Error fetching user roles:', err));
+  }, []);
 
   // Auth
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -317,57 +360,157 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── User Management Handlers ──────────────────────────────────────────────
 
-  const addUser = useCallback((userData: Omit<UserAccount, 'id' | 'joinDate'>) => {
-    const isEmailTaken = users.some((u) => u.email.toLowerCase() === userData.email.toLowerCase());
-    if (isEmailTaken) {
-      alert('Email sudah digunakan oleh user lain!');
-      return;
-    }
+  const addUser = useCallback(async (userData: Omit<UserAccount, 'id' | 'joinDate'>) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
 
-    const newUser: UserAccount = {
-      ...userData,
-      id: Date.now(),
-      joinDate: new Date().toISOString().split('T')[0],
-    };
-
-    setUsers((prev) => [...prev, newUser]);
-    alert(`User "${userData.nama}" berhasil ditambahkan!`);
-  }, [users]);
-
-  const updateUser = useCallback((userId: number, updatedData: Partial<UserAccount>) => {
-    if (updatedData.email) {
-      const isEmailTaken = users.some(
-        (u) => u.id !== userId && u.email.toLowerCase() === updatedData.email!.toLowerCase()
-      );
-      if (isEmailTaken) {
-        alert('Email sudah digunakan oleh user lain!');
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Gagal menambahkan user baru');
         return;
       }
+
+      setUsers((prev) => [...prev, result]);
+      alert(`User "${result.nama}" berhasil ditambahkan!`);
+    } catch (err) {
+      console.error('Error adding user:', err);
+      alert('Terjadi kesalahan koneksi ke backend database.');
     }
+  }, []);
 
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, ...updatedData } : u))
-    );
+  const updateUser = useCallback(async (userId: number, updatedData: Partial<UserAccount>) => {
+    try {
+      const existingUser = users.find((u) => u.id === userId);
+      if (!existingUser) {
+        alert('User tidak ditemukan!');
+        return;
+      }
 
-    // If updating current logged in user, refresh their session state
-    if (currentUser?.id === userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, ...updatedData } : null));
+      const fullUpdatedUser = { ...existingUser, ...updatedData };
+
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullUpdatedUser),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Gagal memperbarui data user');
+        return;
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? result : u))
+      );
+
+      // If updating current logged in user, refresh their session state
+      if (currentUser?.id === userId) {
+        setCurrentUser(result);
+      }
+
+      alert('Data user berhasil diperbarui!');
+    } catch (err) {
+      console.error('Error updating user:', err);
+      alert('Terjadi kesalahan koneksi ke backend database.');
     }
-
-    alert('Data user berhasil diperbarui!');
   }, [users, currentUser]);
 
-  const deleteUser = useCallback((userId: number) => {
+  const deleteUser = useCallback(async (userId: number) => {
     if (currentUser?.id === userId) {
       alert('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan!');
       return;
     }
 
     if (confirm('Apakah Anda yakin ingin menghapus user ini?')) {
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      alert('User berhasil dihapus!');
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+          method: 'DELETE',
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          alert(result.message || 'Gagal menghapus user');
+          return;
+        }
+
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        alert('User berhasil dihapus!');
+      } catch (err) {
+        console.error('Error deleting user:', err);
+        alert('Terjadi kesalahan koneksi ke backend database.');
+      }
     }
   }, [currentUser]);
+
+  // ── Role Management Handlers ──────────────────────────────────────────────
+
+  const addRole = useCallback(async (nama: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/roles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Gagal menambahkan role baru');
+        return false;
+      }
+      setRoles((prev) => [...prev, result]);
+      alert(`Role "${result.nama}" berhasil ditambahkan!`);
+      return true;
+    } catch (err) {
+      console.error('Error adding role:', err);
+      alert('Terjadi kesalahan koneksi ke backend database.');
+      return false;
+    }
+  }, []);
+
+  const toggleUserRole = useCallback(async (userId: number, roleId: number) => {
+    const isAssigned = userRoles.some(
+      (mapping) => mapping.user_id === userId && mapping.role_id === roleId
+    );
+
+    try {
+      if (isAssigned) {
+        // Delete assignment
+        const response = await fetch(`${API_BASE_URL}/user-roles`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, roleId }),
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          alert(result.message || 'Gagal menghapus role');
+          return;
+        }
+        setUserRoles((prev) =>
+          prev.filter((mapping) => !(mapping.user_id === userId && mapping.role_id === roleId))
+        );
+      } else {
+        // Create assignment
+        const response = await fetch(`${API_BASE_URL}/user-roles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, roleId }),
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          alert(result.message || 'Gagal menambahkan role');
+          return;
+        }
+        setUserRoles((prev) => [...prev, { user_id: userId, role_id: roleId }]);
+      }
+    } catch (err) {
+      console.error('Error toggling user role:', err);
+      alert('Terjadi kesalahan koneksi ke backend database.');
+    }
+  }, [userRoles]);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -410,6 +553,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addUser,
         updateUser,
         deleteUser,
+        roles,
+        userRoles,
+        addRole,
+        toggleUserRole,
       }}
     >
       {children}

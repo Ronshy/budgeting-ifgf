@@ -438,7 +438,9 @@ export function UserSection() {
                       <option value="Administrator">Administrator</option>
                       <option value="Budget Manager">Budget Manager</option>
                       <option value="Requester">Requester</option>
-                      <option value="Approver">Approver</option>
+                      <option value="Approver 1">Approver 1</option>
+                      <option value="Approver 2">Approver 2</option>
+                      <option value="Approver 3">Approver 3</option>
                     </select>
                   </div>
                   <div>

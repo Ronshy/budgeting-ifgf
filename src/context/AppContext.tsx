@@ -9,7 +9,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import type { PurchaseOrder, LPJFile, UserProfile, POFormState, NewItemState, UserAccount, Role, UserRoleMapping } from '@/lib/types';
-import { initialPOs, initialLPJFiles, initialUsers, departments } from '@/lib/data';
+import { initialLPJFiles, initialUsers, departments } from '@/lib/data';
 import { formatRupiah } from '@/lib/utils';
 
 // ─── Context Shape ────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [userRoles, setUserRoles] = useState<UserRoleMapping[]>([]);
 
-  // Load users, roles, and user_roles from database
+  // Load users, roles, user_roles, and purchase orders from database
   useEffect(() => {
     // Fetch users
     fetch(`${API_BASE_URL}/users`)
@@ -114,6 +114,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
       .then((data) => setUserRoles(data))
       .catch((err) => console.error('Error fetching user roles:', err));
+
+    // Fetch purchase orders
+    fetch(`${API_BASE_URL}/purchase-orders`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch purchase orders');
+        return res.json();
+      })
+      .then((data) => setSubmittedPOs(data))
+      .catch((err) => console.error('Error fetching purchase orders:', err));
   }, []);
 
   // Auth
@@ -144,7 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     hargaSatuan: '',
     rekeningSupplier: '',
   });
-  const [submittedPOs, setSubmittedPOs] = useState<PurchaseOrder[]>(initialPOs);
+  const [submittedPOs, setSubmittedPOs] = useState<PurchaseOrder[]>([]);
 
   // LPJ
   const [lpjFiles, setLpjFiles] = useState<LPJFile[]>(initialLPJFiles);
@@ -260,57 +269,106 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [poForm.items]);
 
   const handlePOSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       if (poForm.items.length === 0) {
         alert('Mohon tambahkan minimal 1 item ke PO!');
         return;
       }
       const isOffBudget = poForm.budgetCategory === 'off_budget';
-      const totalPO = calculateTotalPO();
-      const year = new Date().getFullYear();
-      const nomorPO = `PO-${year}-${String(submittedPOs.length + 1).padStart(3, '0')}`;
-      const newPO: PurchaseOrder = {
-        id: Date.now(),
-        nomorPO,
-        namaKegiatan: poForm.nama,
-        departemen: poForm.departemen,
-        budgetCategory: poForm.budgetCategory,
-        isOffBudget,
-        keterangan: poForm.keterangan,
-        items: [...poForm.items],
-        totalNilai: totalPO,
-        submittedBy: userProfile.nama,
-        submittedAt: new Date().toISOString(),
-        status: 'pending',
-      };
-      setSubmittedPOs((prev) => [newPO, ...prev]);
-      alert(
-        `PO berhasil dibuat!\n\nNomor PO: ${nomorPO}\nNama Kegiatan: ${poForm.nama}\nDepartemen: ${poForm.departemen}\nDiajukan oleh: ${userProfile.nama}\n\nTotal Nilai PO: ${formatRupiah(totalPO)}\n\nPO Anda telah disimpan dan menunggu persetujuan.`
-      );
-      setPoForm({ nama: '', departemen: 'Marketing', budgetCategory: '', keterangan: '', items: [] });
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/purchase-orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            namaKegiatan: poForm.nama,
+            departemen: poForm.departemen,
+            budgetCategory: poForm.budgetCategory,
+            isOffBudget,
+            keterangan: poForm.keterangan,
+            items: poForm.items,
+            submittedBy: userProfile.nama,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          alert(result.message || 'Gagal membuat Purchase Order');
+          return;
+        }
+
+        setSubmittedPOs((prev) => [result, ...prev]);
+
+        const emailInfo = result.emailNotification;
+        let emailMsg = '';
+        if (emailInfo && emailInfo.approversFound > 0) {
+          emailMsg = `\n\nNotifikasi email terkirim ke ${emailInfo.sent} approver.`;
+          if (emailInfo.failed > 0) emailMsg += ` (${emailInfo.failed} gagal)`;
+        } else {
+          emailMsg = '\n\nTidak ada approver di departemen ini.';
+        }
+
+        alert(
+          `PO berhasil dibuat!\n\nNomor PO: ${result.nomorPO}\nNama Kegiatan: ${poForm.nama}\nDepartemen: ${poForm.departemen}\nDiajukan oleh: ${userProfile.nama}\n\nTotal Nilai PO: ${formatRupiah(result.totalNilai)}\n\nPO Anda telah disimpan dan menunggu persetujuan.${emailMsg}`
+        );
+        setPoForm({ nama: '', departemen: 'Marketing', budgetCategory: '', keterangan: '', items: [] });
+      } catch (err) {
+        console.error('Error submitting PO:', err);
+        alert('Terjadi kesalahan koneksi ke backend database.');
+      }
     },
-    [poForm, submittedPOs.length, userProfile.nama, calculateTotalPO]
+    [poForm, userProfile.nama]
   );
 
-  const handleApprovePO = useCallback((poId: number) => {
+  const handleApprovePO = useCallback(async (poId: number) => {
     if (confirm('Apakah Anda yakin ingin menyetujui PO ini?')) {
-      setSubmittedPOs((prev) =>
-        prev.map((po) => (po.id === poId ? { ...po, status: 'approved' } : po))
-      );
-      alert('PO berhasil disetujui!');
+      try {
+        const response = await fetch(`${API_BASE_URL}/purchase-orders/${poId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'approved' }),
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          alert(result.message || 'Gagal menyetujui PO');
+          return;
+        }
+        setSubmittedPOs((prev) =>
+          prev.map((po) => (po.id === poId ? { ...po, status: 'approved' } : po))
+        );
+        alert('PO berhasil disetujui!');
+      } catch (err) {
+        console.error('Error approving PO:', err);
+        alert('Terjadi kesalahan koneksi ke backend database.');
+      }
     }
   }, []);
 
-  const handleRejectPO = useCallback((poId: number) => {
+  const handleRejectPO = useCallback(async (poId: number) => {
     const reason = prompt('Masukkan alasan penolakan:');
     if (reason) {
-      setSubmittedPOs((prev) =>
-        prev.map((po) =>
-          po.id === poId ? { ...po, status: 'rejected', rejectionReason: reason } : po
-        )
-      );
-      alert('PO berhasil ditolak!');
+      try {
+        const response = await fetch(`${API_BASE_URL}/purchase-orders/${poId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'rejected', rejectionReason: reason }),
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          alert(result.message || 'Gagal menolak PO');
+          return;
+        }
+        setSubmittedPOs((prev) =>
+          prev.map((po) =>
+            po.id === poId ? { ...po, status: 'rejected', rejectionReason: reason } : po
+          )
+        );
+        alert('PO berhasil ditolak!');
+      } catch (err) {
+        console.error('Error rejecting PO:', err);
+        alert('Terjadi kesalahan koneksi ke backend database.');
+      }
     }
   }, []);
 

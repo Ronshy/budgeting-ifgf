@@ -2,25 +2,53 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Shield, Plus, X, Loader2 } from 'lucide-react';
+import { Shield, Plus, X, Loader2, ChevronDown } from 'lucide-react';
+
+// Daftar role yang digunakan dalam aplikasi
+const PRESET_ROLES = [
+  'Super Admin',
+  'Admin',
+  'Budget Manager',
+  'Requester',
+  'Approval 1',
+  'Approval 2',
+  'Approval 3',
+];
 
 export function RoleSection() {
   const { users, roles, userRoles, addRole, toggleUserRole } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [inputMode, setInputMode] = useState<'preset' | 'custom'>('preset');
+  const [selectedPreset, setSelectedPreset] = useState('Super Admin');
   const [newRoleName, setNewRoleName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Filter preset agar tidak menampilkan role yang sudah ada di database
+  const existingRoleNames = roles.map((r) => r.nama.toLowerCase());
+  const availablePresets = PRESET_ROLES.filter(
+    (p) => !existingRoleNames.includes(p.toLowerCase())
+  );
+
+  const handleOpenModal = () => {
+    setInputMode('preset');
+    setSelectedPreset(availablePresets[0] || PRESET_ROLES[0]);
+    setNewRoleName('');
+    setShowModal(true);
+  };
+
   const handleAddRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRoleName.trim()) {
+    const roleToAdd = inputMode === 'preset' ? selectedPreset : newRoleName.trim();
+
+    if (!roleToAdd) {
       alert('Nama role tidak boleh kosong!');
       return;
     }
-    
+
     setIsSubmitting(true);
-    const success = await addRole(newRoleName.trim());
+    const success = await addRole(roleToAdd);
     setIsSubmitting(false);
-    
+
     if (success) {
       setNewRoleName('');
       setShowModal(false);
@@ -41,7 +69,7 @@ export function RoleSection() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
+          onClick={handleOpenModal}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -275,33 +303,172 @@ export function RoleSection() {
             </div>
 
             <form onSubmit={handleAddRoleSubmit}>
-              <div style={{ marginBottom: '20px' }}>
-                <label
-                  htmlFor="role-name"
-                  style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}
-                >
-                  Nama Role
-                </label>
-                <input
-                  type="text"
-                  id="role-name"
-                  value={newRoleName}
-                  onChange={(e) => setNewRoleName(e.target.value)}
-                  placeholder="Contoh: Volunteer, Supervisor"
-                  autoFocus
+              {/* Mode Toggle */}
+              <div style={{ display: 'flex', marginBottom: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => setInputMode('preset')}
                   style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    backgroundColor: inputMode === 'preset' ? '#2563eb' : '#f8fafc',
+                    color: inputMode === 'preset' ? '#ffffff' : '#64748b',
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = '#2563eb')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = '#cbd5e1')}
-                />
+                >
+                  Pilih dari Daftar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInputMode('custom')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    backgroundColor: inputMode === 'custom' ? '#2563eb' : '#f8fafc',
+                    color: inputMode === 'custom' ? '#ffffff' : '#64748b',
+                  }}
+                >
+                  Nama Baru
+                </button>
               </div>
+
+              {inputMode === 'preset' ? (
+                <div style={{ marginBottom: '20px' }}>
+                  <label
+                    style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}
+                  >
+                    Pilih Role
+                  </label>
+                  {availablePresets.length === 0 ? (
+                    <div style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      background: '#f8fafc',
+                      fontSize: '13px',
+                      color: '#94a3b8',
+                      textAlign: 'center',
+                    }}>
+                      Semua role preset sudah ditambahkan
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
+                      {availablePresets.map((preset) => {
+                        const isSelected = selectedPreset === preset;
+                        const isSuperAdmin = preset === 'Super Admin';
+                        const isAdmin = preset === 'Admin';
+                        return (
+                          <div
+                            key={preset}
+                            onClick={() => setSelectedPreset(preset)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                              background: isSelected ? '#eff6ff' : '#ffffff',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseOver={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = '#f8fafc';
+                            }}
+                            onMouseOut={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = '#ffffff';
+                            }}
+                          >
+                            {/* Custom radio */}
+                            <div style={{
+                              width: '18px',
+                              height: '18px',
+                              borderRadius: '50%',
+                              border: isSelected ? '5px solid #2563eb' : '2px solid #cbd5e1',
+                              flexShrink: 0,
+                              transition: 'all 0.15s ease',
+                            }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                              <Shield size={14} color={isSuperAdmin ? '#7c3aed' : isAdmin ? '#2563eb' : '#64748b'} />
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: isSelected ? '600' : '500',
+                                color: isSelected ? '#1e40af' : '#334155',
+                              }}>
+                                {preset}
+                              </span>
+                              {isSuperAdmin && (
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                                  color: '#ffffff',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  letterSpacing: '0.03em',
+                                }}>
+                                  TERTINGGI
+                                </span>
+                              )}
+                              {isAdmin && (
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                                  color: '#ffffff',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  letterSpacing: '0.03em',
+                                }}>
+                                  ADMIN
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ marginBottom: '20px' }}>
+                  <label
+                    htmlFor="role-name"
+                    style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}
+                  >
+                    Nama Role Baru
+                  </label>
+                  <input
+                    type="text"
+                    id="role-name"
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                    placeholder="Contoh: Volunteer, Supervisor"
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box',
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = '#2563eb')}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = '#cbd5e1')}
+                  />
+                </div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button

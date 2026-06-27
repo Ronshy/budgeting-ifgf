@@ -69,7 +69,7 @@ export function UserSection() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!nama || !email || !password || !role || !departemen || !phone) {
+    if (!nama || !email || !password || !departemen || !phone) {
       alert('Mohon isi semua field!');
       return;
     }
@@ -79,7 +79,7 @@ export function UserSection() {
         nama,
         email,
         password,
-        role,
+        role: editingUser.role, // role tidak berubah dari sini
         departemen,
         phone,
       });
@@ -88,7 +88,7 @@ export function UserSection() {
         nama,
         email,
         password,
-        role,
+        role: 'Requester', // role default saat tambah user baru
         departemen,
         phone,
       });
@@ -255,9 +255,25 @@ export function UserSection() {
                         gap: '4px',
                         fontSize: '11px',
                         fontWeight: '600',
-                        color: u.role === 'Administrator' ? '#7f1d1d' : u.role === 'Budget Manager' ? '#14532d' : '#1e3a8a',
-                        background: u.role === 'Administrator' ? '#fee2e2' : u.role === 'Budget Manager' ? '#dcfce7' : '#dbeafe',
-                        border: `1px solid ${u.role === 'Administrator' ? '#fecaca' : u.role === 'Budget Manager' ? '#bbf7d0' : '#bfdbfe'}`,
+                        color:
+                          u.role === 'Super Admin' ? '#4c1d95' :
+                          u.role === 'Admin' ? '#1e3a8a' :
+                          u.role === 'Budget Manager' ? '#14532d' :
+                          u.role === 'Requester' ? '#92400e' :
+                          u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#1e3a5f' : '#475569',
+                        background:
+                          u.role === 'Super Admin' ? '#ede9fe' :
+                          u.role === 'Admin' ? '#dbeafe' :
+                          u.role === 'Budget Manager' ? '#dcfce7' :
+                          u.role === 'Requester' ? '#fef3c7' :
+                          u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#e0f2fe' : '#f1f5f9',
+                        border: `1px solid ${
+                          u.role === 'Super Admin' ? '#ddd6fe' :
+                          u.role === 'Admin' ? '#bfdbfe' :
+                          u.role === 'Budget Manager' ? '#bbf7d0' :
+                          u.role === 'Requester' ? '#fde68a' :
+                          u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#bae6fd' : '#e2e8f0'
+                        }`,
                         padding: '2px 8px',
                         borderRadius: '4px',
                       }}>
@@ -422,45 +438,45 @@ export function UserSection() {
                   />
                 </div>
 
-                {/* Role & Dept Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      Role <span style={{ color: '#dc2626' }}>*</span>
-                    </label>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      style={{ ...inputStyle, cursor: 'pointer' }}
-                      onFocus={focusBorder}
-                      onBlur={blurBorder}
-                    >
-                      <option value="Administrator">Administrator</option>
-                      <option value="Budget Manager">Budget Manager</option>
-                      <option value="Requester">Requester</option>
-                      <option value="Approver 1">Approver 1</option>
-                      <option value="Approver 2">Approver 2</option>
-                      <option value="Approver 3">Approver 3</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      Departemen <span style={{ color: '#dc2626' }}>*</span>
-                    </label>
-                    <select
-                      value={departemen}
-                      onChange={(e) => setDepartemen(e.target.value)}
-                      style={{ ...inputStyle, cursor: 'pointer' }}
-                      onFocus={focusBorder}
-                      onBlur={blurBorder}
-                    >
-                      {Object.keys(departments).map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Departemen - full width */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                    Departemen <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <select
+                    value={departemen}
+                    onChange={(e) => setDepartemen(e.target.value)}
+                    style={{ ...inputStyle, cursor: 'pointer' }}
+                    onFocus={focusBorder}
+                    onBlur={blurBorder}
+                  >
+                    {Object.keys(departments).map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Info: role diatur di Role Setting */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#0369a1',
+                }}>
+                  <Shield size={14} color="#0369a1" />
+                  <span>
+                    {editingUser
+                      ? <>Role saat ini: <strong>{editingUser.role}</strong>. Ubah role melalui menu <strong>Role Setting</strong>.</>
+                      : <>User baru akan diberi role default <strong>Requester</strong>. Ubah di <strong>Role Setting</strong>.</>
+                    }
+                  </span>
                 </div>
 
                 {/* Telepon */}

@@ -137,8 +137,8 @@ INSERT INTO departments (id, nama, total_budget, on_budget, off_budget) VALUES
 -- 2. Seed Users
 INSERT INTO users (id, nama, email, password, role, departemen_id, phone, join_date) VALUES
 (1, 'Admin Budgeting', 'admin@company.com', 'admin123', 'Budget Manager', 1, '+62 812-3456-7890', '2024-01-15'),
-(2, 'Michael IT Specialist', 'michael@company.com', 'password123', 'Administrator', 2, '+62 899-8888-7777', '2025-03-10'),
-(3, 'Clara Finance', 'clara@company.com', 'clara456', 'Approver', 4, '+62 855-4433-2211', '2024-11-20');
+(2, 'Michael IT Specialist', 'michael@company.com', 'password123', 'Admin', 2, '+62 899-8888-7777', '2025-03-10'),
+(3, 'Clara Finance', 'clara@company.com', 'clara456', 'Approval 1', 4, '+62 855-4433-2211', '2024-11-20');
 
 -- 3. Seed Budget Allocations
 INSERT INTO budget_allocations (department_id, name, amount, color) VALUES
@@ -221,18 +221,13 @@ CREATE TABLE IF NOT EXISTS user_roles (
 
 -- Seed Roles
 INSERT INTO roles (id, nama) VALUES
-(1, 'Super'),
-(2, 'Smallgroup'),
-(3, 'Ministry'),
-(4, 'Class'),
-(5, 'Event'),
-(6, 'Campaign'),
-(7, 'User'),
-(8, 'Prayer Praise'),
-(9, 'Newsfeed'),
-(10, 'Nextgen'),
-(11, 'Devotion'),
-(12, 'Discover')
+(1, 'Super Admin'),
+(2, 'Admin'),
+(3, 'Budget Manager'),
+(4, 'Requester'),
+(5, 'Approval 1'),
+(6, 'Approval 2'),
+(7, 'Approval 3')
 ON DUPLICATE KEY UPDATE nama=VALUES(nama);
 
 -- Seed Demo Users from screenshot
@@ -240,10 +235,10 @@ INSERT INTO users (nama, email, password, role, departemen_id, phone, join_date)
 ('Adevita Nataliani Santoso', 'adevitanataliani@gmail.com', 'pass123', 'Requester', 1, '+62 812-1111-2222', '2026-06-16'),
 ('Adi Nugroho Tjandrasaputra', 'arcguardian90@gmail.com', 'pass123', 'Requester', 1, '+62 812-2222-3333', '2026-06-16'),
 ('Aditya Hindarta', 'adityahindarta@gmail.com', 'pass123', 'Requester', 1, '+62 812-3333-4444', '2026-06-16'),
-('Andre Saptomo', 'andre.saptomo@ifgfsemarang.org', 'pass123', 'Administrator', 2, '+62 812-4444-5555', '2026-06-16'),
+('Andre Saptomo', 'andre.saptomo@ifgfsemarang.org', 'pass123', 'Admin', 2, '+62 812-4444-5555', '2026-06-16'),
 ('Andrew William', 'andrewwil94@gmail.com', 'pass123', 'Requester', 1, '+62 812-5555-6666', '2026-06-16'),
 ('Aurelia Ivana Melody Ronsumbre', 'aureliaivanaa07@gmail.com', 'pass123', 'Requester', 1, '+62 812-6666-7777', '2026-06-16'),
-('Clarissa Delina Proboyuwono', 'delinaclarissa@gmail.com', 'pass123', 'Approver', 4, '+62 812-7777-8888', '2026-06-16'),
+('Clarissa Delina Proboyuwono', 'delinaclarissa@gmail.com', 'pass123', 'Approval 1', 4, '+62 812-7777-8888', '2026-06-16'),
 ('Gabriella Christie Kartadibrata', 'cyrgaby20@gmail.com', 'pass123', 'Budget Manager', 1, '+62 812-8888-9999', '2026-06-16'),
 ('Hanny Agustina', 'hanny.iun@ifgfsemarang.org', 'pass123', 'Requester', 1, '+62 812-9999-0000', '2026-06-16')
 ON DUPLICATE KEY UPDATE nama=VALUES(nama);

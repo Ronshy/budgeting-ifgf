@@ -419,10 +419,10 @@ app.post('/api/purchase-orders', async (req, res) => {
 
     console.log(`✓ PO ${poNumber} created (ID: ${poId})`);
 
-    // Find approvers in the same department (matches Approver, Approver 1, Approver 2, or Approver 3)
+    // Find approvers in the same department (matches Approval 1, Approval 2, or Approval 3)
     const approversSql = `
       SELECT u.nama, u.email FROM users u
-      WHERE u.departemen_id = ? AND u.role IN ('Approver', 'Approver 1', 'Approver 2', 'Approver 3')
+      WHERE u.departemen_id = ? AND u.role IN ('Approval 1', 'Approval 2', 'Approval 3')
     `;
     const approvers = await dbQuery(approversSql, [departemenId]);
     console.log(`  Found ${approvers.length} approver(s) in department "${departemen}"`);

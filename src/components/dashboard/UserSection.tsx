@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Users, Plus, Edit2, Trash2, Shield, X, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { UserAccount } from '@/lib/types';
-import { departments } from '@/lib/data';
+
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -30,7 +30,7 @@ const blurBorder = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) =
 };
 
 export function UserSection() {
-  const { users, addUser, updateUser, deleteUser, currentUser } = useApp();
+  const { users, addUser, updateUser, deleteUser, currentUser, departmentsData } = useApp();
 
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
@@ -257,23 +257,22 @@ export function UserSection() {
                         fontWeight: '600',
                         color:
                           u.role === 'Super Admin' ? '#4c1d95' :
-                          u.role === 'Admin' ? '#1e3a8a' :
-                          u.role === 'Budget Manager' ? '#14532d' :
-                          u.role === 'Requester' ? '#92400e' :
-                          u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#1e3a5f' : '#475569',
+                            u.role === 'Admin' ? '#1e3a8a' :
+                              u.role === 'Budget Manager' ? '#14532d' :
+                                u.role === 'Requester' ? '#92400e' :
+                                  u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#1e3a5f' : '#475569',
                         background:
                           u.role === 'Super Admin' ? '#ede9fe' :
-                          u.role === 'Admin' ? '#dbeafe' :
-                          u.role === 'Budget Manager' ? '#dcfce7' :
-                          u.role === 'Requester' ? '#fef3c7' :
-                          u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#e0f2fe' : '#f1f5f9',
-                        border: `1px solid ${
-                          u.role === 'Super Admin' ? '#ddd6fe' :
+                            u.role === 'Admin' ? '#dbeafe' :
+                              u.role === 'Budget Manager' ? '#dcfce7' :
+                                u.role === 'Requester' ? '#fef3c7' :
+                                  u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#e0f2fe' : '#f1f5f9',
+                        border: `1px solid ${u.role === 'Super Admin' ? '#ddd6fe' :
                           u.role === 'Admin' ? '#bfdbfe' :
-                          u.role === 'Budget Manager' ? '#bbf7d0' :
-                          u.role === 'Requester' ? '#fde68a' :
-                          u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#bae6fd' : '#e2e8f0'
-                        }`,
+                            u.role === 'Budget Manager' ? '#bbf7d0' :
+                              u.role === 'Requester' ? '#fde68a' :
+                                u.role === 'Approval 1' || u.role === 'Approval 2' || u.role === 'Approval 3' ? '#bae6fd' : '#e2e8f0'
+                          }`,
                         padding: '2px 8px',
                         borderRadius: '4px',
                       }}>
@@ -450,7 +449,7 @@ export function UserSection() {
                     onFocus={focusBorder}
                     onBlur={blurBorder}
                   >
-                    {Object.keys(departments).map((d) => (
+                    {Object.keys(departmentsData).map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>

@@ -3,11 +3,10 @@
 import React from 'react';
 import { Building2, Mail, Phone, Calendar, Shield, FileText, Clipboard, Briefcase } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { departments } from '@/lib/data';
 import { formatRupiah } from '@/lib/utils';
 
 export function ProfileSection() {
-  const { userProfile, lpjFiles, submittedPOs } = useApp();
+  const { userProfile, lpjFiles, submittedPOs, departmentsData } = useApp();
 
   const infoItems = [
     { icon: <Building2 size={18} color="#475569" />, bg: '#f1f5f9', border: '#e2e8f0', label: 'Departemen', value: userProfile.departemen },
@@ -58,7 +57,7 @@ export function ProfileSection() {
             {[
               { label: 'Total PO Dibuat', value: String(submittedPOs.length), color: '#2563eb', bg: '#f8fafc', border: '#e2e8f0', icon: <FileText size={18} color="#2563eb" /> },
               { label: 'Total LPJ Diupload', value: String(lpjFiles.length), color: '#16a34a', bg: '#f8fafc', border: '#e2e8f0', icon: <Clipboard size={18} color="#16a34a" /> },
-              { label: 'Budget Departemen', value: formatRupiah(departments[userProfile.departemen]?.total ?? 0), color: '#334155', bg: '#f8fafc', border: '#e2e8f0', icon: <Briefcase size={18} color="#475569" /> },
+              { label: 'Budget Departemen', value: formatRupiah(departmentsData[userProfile.departemen]?.total ?? 0), color: '#334155', bg: '#f8fafc', border: '#e2e8f0', icon: <Briefcase size={18} color="#475569" /> },
             ].map(({ label, value, color, bg, border, icon }) => (
               <div key={label} style={{ padding: '16px', background: bg, border: `1px solid ${border}`, borderRadius: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>

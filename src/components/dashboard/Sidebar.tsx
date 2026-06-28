@@ -139,8 +139,16 @@ export function Sidebar() {
 
         {/* Menu Items */}
         <nav style={{ flex: 1 }}>
-          {menuItems.map((item) => {
-            const Icon = item.icon;
+          {menuItems
+            .filter((item) => {
+              if (item.id === 'users' || item.id === 'role') {
+                const role = userProfile.role.toLowerCase();
+                return role === 'super admin' || role === 'admin';
+              }
+              return true;
+            })
+            .map((item) => {
+              const Icon = item.icon;
             const isActive = activeMenu === item.id;
             return (
               <div

@@ -8,7 +8,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { PurchaseOrder, LPJFile, UserProfile, POFormState, NewItemState, UserAccount, Role, UserRoleMapping } from '@/lib/types';
+import type { PurchaseOrder, LPJFile, UserProfile, POFormState, NewItemState, UserAccount, Role, UserRoleMapping, DepartmentsMap } from '@/lib/types';
 import { initialLPJFiles, initialUsers, departments } from '@/lib/data';
 import { formatRupiah } from '@/lib/utils';
 
@@ -36,6 +36,8 @@ interface AppContextValue {
   setSelectedDepartment: (dept: string) => void;
   showDepartmentModal: boolean;
   setShowDepartmentModal: (v: boolean) => void;
+  departmentsData: DepartmentsMap;
+  updateDepartmentBudget: (deptName: string, total: number, onBudget: number, offBudget: number) => void;
 
   // PO
   poForm: POFormState;
@@ -115,6 +117,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then((data) => setUserRoles(data))
       .catch((err) => console.error('Error fetching user roles:', err));
 
+    // Fetch departments
+    fetch(`${API_BASE_URL}/departments`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch departments');
+        return res.json();
+      })
+      .then((dbDepts) => {
+        setDepartmentsData(prev => {
+          const newData = { ...prev };
+          dbDepts.forEach((d: any) => {
+            if (newData[d.nama]) {
+              newData[d.nama] = {
+                ...newData[d.nama],
+                total: Number(d.total_budget),
+                onBudget: Number(d.on_budget),
+                offBudget: Number(d.off_budget)
+              };
+            }
+          });
+          return newData;
+        });
+      })
+      .catch((err) => console.error('Error fetching departments:', err));
+
     // Fetch purchase orders
     fetch(`${API_BASE_URL}/purchase-orders`)
       .then((res) => {
@@ -138,6 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Dashboard
   const [selectedDepartment, setSelectedDepartment] = useState('Marketing');
   const [showDepartmentModal, setShowDepartmentModal] = useState(false);
+  const [departmentsData, setDepartmentsData] = useState<DepartmentsMap>(departments);
 
   // PO
   const [poForm, setPoForm] = useState<POFormState>({
@@ -276,6 +303,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const isOffBudget = poForm.budgetCategory === 'off_budget';
+      const totalNilaiPO = calculateTotalPO();
+
+      if (!isOffBudget) {
+        const deptData = departmentsData[poForm.departemen];
+        if (deptData) {
+          const remaining = deptData.total - deptData.onBudget;
+          if (totalNilaiPO > remaining) {
+            alert(`Gagal: Pengajuan On Budget (${formatRupiah(totalNilaiPO)}) melebihi sisa budget departemen (${formatRupiah(remaining)}).`);
+            return;
+          }
+        }
+      }
 
       try {
         const response = await fetch(`${API_BASE_URL}/purchase-orders`, {
@@ -318,7 +357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         alert('Terjadi kesalahan koneksi ke backend database.');
       }
     },
-    [poForm, userProfile.nama]
+    [poForm, userProfile.nama, calculateTotalPO, departmentsData]
   );
 
   const handleApprovePO = useCallback(async (poId: number) => {
@@ -337,13 +376,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSubmittedPOs((prev) =>
           prev.map((po) => (po.id === poId ? { ...po, status: 'approved' } : po))
         );
+        
+        const approvedPO = submittedPOs.find((p) => p.id === poId);
+        if (approvedPO) {
+          setDepartmentsData((prevDepts) => {
+            const dept = prevDepts[approvedPO.departemen];
+            if (!dept) return prevDepts;
+            if (approvedPO.isOffBudget) {
+              return { ...prevDepts, [approvedPO.departemen]: { ...dept, offBudget: dept.offBudget + approvedPO.totalNilai } };
+            } else {
+              return { ...prevDepts, [approvedPO.departemen]: { ...dept, onBudget: dept.onBudget + approvedPO.totalNilai } };
+            }
+          });
+        }
+        
         alert('PO berhasil disetujui!');
       } catch (err) {
         console.error('Error approving PO:', err);
         alert('Terjadi kesalahan koneksi ke backend database.');
       }
     }
-  }, []);
+  }, [submittedPOs]);
 
   const handleRejectPO = useCallback(async (poId: number) => {
     const reason = prompt('Masukkan alasan penolakan:');
@@ -535,6 +588,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     try {
+      let newUserRoles = [...userRoles];
       if (isAssigned) {
         // Delete assignment
         const response = await fetch(`${API_BASE_URL}/user-roles`, {
@@ -547,9 +601,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           alert(result.message || 'Gagal menghapus role');
           return;
         }
-        setUserRoles((prev) =>
-          prev.filter((mapping) => !(mapping.user_id === userId && mapping.role_id === roleId))
+        newUserRoles = userRoles.filter(
+          (mapping) => !(mapping.user_id === userId && mapping.role_id === roleId)
         );
+        setUserRoles(newUserRoles);
       } else {
         // Create assignment
         const response = await fetch(`${API_BASE_URL}/user-roles`, {
@@ -562,13 +617,78 @@ export function AppProvider({ children }: { children: ReactNode }) {
           alert(result.message || 'Gagal menambahkan role');
           return;
         }
-        setUserRoles((prev) => [...prev, { user_id: userId, role_id: roleId }]);
+        newUserRoles = [...userRoles, { user_id: userId, role_id: roleId }];
+        setUserRoles(newUserRoles);
+      }
+
+      // Determine new primary role
+      const user = users.find((u) => u.id === userId);
+      if (user) {
+        const assignedRoleIds = newUserRoles.filter((ur) => ur.user_id === userId).map(ur => ur.role_id);
+        const assignedRoles = roles.filter(r => assignedRoleIds.includes(r.id)).map(r => r.nama);
+        
+        let newPrimaryRole = 'Requester';
+        
+        if (assignedRoles.length > 0) {
+           const PRESET_HIERARCHY = ['Super Admin', 'Admin', 'Budget Manager', 'Approval 1', 'Approval 2', 'Approval 3', 'Requester'];
+           let highest = assignedRoles[0];
+           let highestIdx = 999;
+           for (const r of assignedRoles) {
+               const idx = PRESET_HIERARCHY.indexOf(r);
+               if (idx !== -1 && idx < highestIdx) {
+                   highestIdx = idx;
+                   highest = r;
+               }
+           }
+           newPrimaryRole = highest;
+        }
+        
+        if (user.role !== newPrimaryRole) {
+           const updatedUser = { ...user, role: newPrimaryRole };
+           await fetch(`${API_BASE_URL}/users/${userId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedUser),
+           });
+           setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newPrimaryRole } : u)));
+           if (currentUser?.id === userId) {
+              setCurrentUser((prev) => prev ? { ...prev, role: newPrimaryRole } : prev);
+           }
+        }
       }
     } catch (err) {
       console.error('Error toggling user role:', err);
       alert('Terjadi kesalahan koneksi ke backend database.');
     }
-  }, [userRoles]);
+  }, [userRoles, users, roles, currentUser]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const updateDepartmentBudget = useCallback(async (deptName: string, total: number, onBudget: number, offBudget: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/departments/${deptName}/budget`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total_budget: total }),
+      });
+      if (!response.ok) {
+        alert('Gagal mengupdate budget departemen ke server.');
+        return;
+      }
+      setDepartmentsData((prev) => ({
+        ...prev,
+        [deptName]: {
+          ...prev[deptName],
+          total,
+          onBudget,
+          offBudget,
+        },
+      }));
+    } catch (err) {
+      console.error('Error updating department budget:', err);
+      alert('Terjadi kesalahan koneksi ke backend.');
+    }
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -615,6 +735,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userRoles,
         addRole,
         toggleUserRole,
+        departmentsData,
+        updateDepartmentBudget,
       }}
     >
       {children}

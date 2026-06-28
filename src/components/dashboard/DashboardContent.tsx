@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Building2, Clock, TrendingUp, TrendingDown, CheckCircle2,
-  XCircle, Eye, Lock,
+  XCircle, Eye, Lock, Edit2, X, Save
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { departments, transactions } from '@/lib/data';
+import { transactions } from '@/lib/data';
 import { formatRupiah, getPercentage } from '@/lib/utils';
 
 // Role yang memiliki akses penuh ke semua data budget
@@ -19,7 +19,15 @@ export function DashboardContent() {
     showDepartmentModal,
     setShowDepartmentModal,
     currentUser,
+    departmentsData,
+    updateDepartmentBudget,
   } = useApp();
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editDept, setEditDept] = useState('');
+  const [editTotal, setEditTotal] = useState(0);
+  const [editOnBudget, setEditOnBudget] = useState(0);
+  const [editOffBudget, setEditOffBudget] = useState(0);
 
   const userRole = currentUser?.role ?? '';
   const isAdminRole = ADMIN_ROLES.includes(userRole);
@@ -29,10 +37,10 @@ export function DashboardContent() {
     ? selectedDepartment
     : (currentUser?.departemen ?? selectedDepartment);
 
-  const currentBudget = departments[activeDepartment] ?? departments[selectedDepartment];
-  const totalAll = Object.values(departments).reduce((s, d) => s + d.total, 0);
-  const onBudgetAll = Object.values(departments).reduce((s, d) => s + d.onBudget, 0);
-  const offBudgetAll = Object.values(departments).reduce((s, d) => s + d.offBudget, 0);
+  const currentBudget = departmentsData[activeDepartment] ?? departmentsData[selectedDepartment];
+  const totalAll = Object.values(departmentsData).reduce((s, d) => s + d.total, 0);
+  const onBudgetAll = Object.values(departmentsData).reduce((s, d) => s + d.onBudget, 0);
+  const offBudgetAll = Object.values(departmentsData).reduce((s, d) => s + d.offBudget, 0);
 
   // Filter transaksi: admin lihat semua, user biasa hanya departemennya
   const visibleTransactions = isAdminRole
@@ -82,7 +90,7 @@ export function DashboardContent() {
                 </div>
                 <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
                   <Building2 size={16} />
-                  <span>Konsolidasi dari {Object.keys(departments).length} departemen</span>
+                  <span>Konsolidasi dari {Object.keys(departmentsData).length} departemen</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                   <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px' }}>
@@ -102,13 +110,47 @@ export function DashboardContent() {
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', minWidth: '300px' }}>
                 <h4 style={{ fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Breakdown Departemen</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {Object.entries(departments).map(([name, budget]) => (
+                  {Object.entries(departmentsData).map(([name, budget]) => (
                     <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>{name}</div>
                         <div style={{ fontSize: '11px', color: '#64748b' }}>{getPercentage(budget.total, totalAll)}% porsi</div>
                       </div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>{formatRupiah(budget.total)}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>{formatRupiah(budget.total)}</span>
+                        <button
+                          onClick={() => {
+                            setEditDept(name);
+                            setEditTotal(budget.total);
+                            setEditOnBudget(budget.onBudget);
+                            setEditOffBudget(budget.offBudget);
+                            setIsEditModalOpen(true);
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = '#e2e8f0';
+                            (e.currentTarget as HTMLButtonElement).style.color = '#0f172a';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                            (e.currentTarget as HTMLButtonElement).style.color = '#64748b';
+                          }}
+                          title="Edit Budget"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -200,7 +242,7 @@ export function DashboardContent() {
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px', marginBottom: '32px', animation: 'fadeIn 0.2s ease-out', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#0f172a' }}>Pilih Departemen</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            {Object.entries(departments).map(([name, budget]) => (
+            {Object.entries(departmentsData).map(([name, budget]) => (
               <div
                 key={name}
                 onClick={() => { setSelectedDepartment(name); setShowDepartmentModal(false); }}
@@ -276,6 +318,91 @@ export function DashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* Edit Budget Modal */}
+      {isEditModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
+          <div style={{ background: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', animation: 'slideUp 0.3s ease-out' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a' }}>Edit Budget {editDept}</h3>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#f1f5f9'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              updateDepartmentBudget(editDept, editTotal, editOnBudget, editOffBudget);
+              setIsEditModalOpen(false);
+              alert('Budget berhasil diperbarui!');
+            }} style={{ padding: '24px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#334155', marginBottom: '8px' }}>Total Budget (Rp)</label>
+                <input
+                  type="number"
+                  required
+                  value={editTotal}
+                  onChange={(e) => setEditTotal(Number(e.target.value))}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'all 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#334155', marginBottom: '8px' }}>Total On Budget (Rp)</label>
+                <input
+                  type="number"
+                  required
+                  value={editOnBudget}
+                  onChange={(e) => setEditOnBudget(Number(e.target.value))}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'all 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#334155', marginBottom: '8px' }}>Total Off Budget (Rp)</label>
+                <input
+                  type="number"
+                  required
+                  value={editOffBudget}
+                  onChange={(e) => setEditOffBudget(Number(e.target.value))}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'all 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                />
+                {(editOnBudget + editOffBudget !== editTotal) && (
+                  <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>
+                    * Peringatan: Total On Budget + Off Budget tidak sama dengan Total Budget.
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#475569', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#ffffff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <Save size={16} />
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

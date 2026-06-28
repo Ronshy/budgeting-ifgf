@@ -129,6 +129,33 @@ async function getDepartmentId(deptName) {
 
 // ─── API ENDPOINTS ────────────────────────────────────────────────────────────
 
+// 0. GET: Fetch all departments
+app.get('/api/departments', async (req, res) => {
+  try {
+    const departments = await dbQuery('SELECT * FROM departments');
+    res.json(departments);
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+    res.status(500).json({ message: 'Gagal mengambil data departemen', error: error.message });
+  }
+});
+
+// 0.5 PUT: Update department budget
+app.put('/api/departments/:name/budget', async (req, res) => {
+  const deptName = req.params.name;
+  const { total_budget } = req.body;
+  if (total_budget === undefined) {
+    return res.status(400).json({ message: 'total_budget wajib diisi!' });
+  }
+  try {
+    await dbQuery('UPDATE departments SET total_budget = ? WHERE nama = ?', [total_budget, deptName]);
+    res.json({ message: 'Budget berhasil diupdate' });
+  } catch (error) {
+    console.error('Error updating budget:', error);
+    res.status(500).json({ message: 'Gagal mengupdate budget', error: error.message });
+  }
+});
+
 // 1. GET: Fetch all users
 app.get('/api/users', async (req, res) => {
   try {
@@ -481,6 +508,18 @@ app.put('/api/purchase-orders/:id/status', async (req, res) => {
       await dbQuery('UPDATE purchase_orders SET status = ?, rejection_reason = ? WHERE id = ?', [status, rejectionReason, poId]);
     } else {
       await dbQuery('UPDATE purchase_orders SET status = ? WHERE id = ?', [status, poId]);
+      
+      if (status === 'approved') {
+        const poData = await dbQuery('SELECT total_nilai, department_id, is_off_budget FROM purchase_orders WHERE id = ?', [poId]);
+        if (poData.length > 0) {
+          const { total_nilai, department_id, is_off_budget } = poData[0];
+          if (is_off_budget) {
+            await dbQuery('UPDATE departments SET off_budget = off_budget + ? WHERE id = ?', [total_nilai, department_id]);
+          } else {
+            await dbQuery('UPDATE departments SET on_budget = on_budget + ? WHERE id = ?', [total_nilai, department_id]);
+          }
+        }
+      }
     }
 
     res.json({ message: `PO berhasil di-${status === 'approved' ? 'setujui' : 'tolak'}.`, poId, status });

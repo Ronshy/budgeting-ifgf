@@ -3,7 +3,6 @@
 import React from 'react';
 import { FileText, File, Trash2, CheckCircle2, XCircle, Plus } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { departments } from '@/lib/data';
 import { formatRupiah } from '@/lib/utils';
 
 const inputStyle: React.CSSProperties = {
@@ -27,10 +26,12 @@ export function POSection() {
     newItem, handleNewItemChange,
     addItemToPO, deleteItemFromPO,
     calculateTotalPO, handlePOSubmit,
+    handleRejectPO,
     submittedPOs,
+    departmentsData,
   } = useApp();
 
-  const deptAllocation = departments[poForm.departemen]?.allocation ?? [];
+  const deptAllocation = departmentsData[poForm.departemen]?.allocation ?? [];
 
   return (
     <div style={{ animation: 'slideUp 0.4s ease-out' }}>
@@ -52,7 +53,7 @@ export function POSection() {
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>Departemen <span style={{ color: '#dc2626' }}>*</span></label>
             <select required value={poForm.departemen} onChange={e => handlePOFormChange('departemen', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }} onFocus={focusBorder} onBlur={blurBorder}>
-              {Object.keys(departments).map(d => <option key={d} value={d}>{d}</option>)}
+              {Object.keys(departmentsData).map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
